@@ -5,9 +5,8 @@ const QRCode = require('qrcode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-let qrCodeImageUrl = ''; // Guarda a imagem do QR Code em Base64
+let qrCodeImageUrl = ''; 
 
-// Rota web para exibir o QR Code em uma página limpa
 app.get('/', (req, res) => {
     if (qrCodeImageUrl) {
         res.send(`
@@ -17,7 +16,6 @@ app.get('/', (req, res) => {
                     <img src="${qrCodeImageUrl}" style="border: 10px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 8px;" />
                     <p style="margin-top: 15px; color: #666;">A página atualiza sozinha quando o QR Code mudar.</p>
                     <script>
-                        // Atualiza a página a cada 10 segundos para pegar novos QRs se necessário
                         setTimeout(() => { location.reload(); }, 10000);
                     </script>
                 </body>
@@ -27,19 +25,18 @@ app.get('/', (req, res) => {
         res.send(`
             <html>
                 <body style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; background-color: #f0f2f5;">
-                    <h2>Aguardando o WhatsApp gerar o QR Code... Por favor, recarregue a página em alguns instantes.</h2>
+                    <h2>Aguardando o WhatsApp carregar ou já conectado! Olhe os logs na Render.</h2>
                 </body>
             </html>
         `);
     }
 });
 
-// Inicia o servidor web da Render
 app.listen(PORT, () => {
     console.log(`Servidor web rodando na porta ${PORT}`);
 });
 
-// Inicializa o cliente do WhatsApp
+// Inicialização super otimizada para servidores de baixa memória (512MB)
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -47,14 +44,17 @@ const client = new Client({
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu'
+            '--disable-dev-shm-usage', // Evita usar a memória compartilhada /dev/shm
+            '--disable-gpu',           // Desativa aceleração de hardware por GPU
+            '--no-zygote',             // Desativa o processo Zygote para economizar RAM
+            '--single-process',        // Força a rodar tudo em apenas uma thread/processo (ajuda muito a poupar RAM)
+            '--no-first-run',
+            '--disable-extensions'
         ],
         cacheDirectory: path.join(__dirname, '.cache', 'puppeteer')
     }
 });
 
-// Quando gerar o QR Code, converte para imagem (Base64) para exibir na página web
 client.on('qr', async (qr) => {
     try {
         qrCodeImageUrl = await QRCode.toDataURL(qr);
@@ -66,12 +66,17 @@ client.on('qr', async (qr) => {
 
 client.on('ready', () => {
     console.log('TUDO PRONTO! O seu WhatsApp está conectado à VPS.');
-    qrCodeImageUrl = ''; // Limpa o QR Code após conectar
+    qrCodeImageUrl = ''; 
 });
 
 client.on('message', async msg => {
     if (msg.body.toLowerCase() === 'oi') {
-        await msg.reply('Olá! Esse é um teste enviado automaticamente pela minha VPS gratuita na Render. 🚀');
+        try {
+            await msg.reply('Olá! Esse é um teste enviado automaticamente pela minha VPS gratuita na Render. 🚀');
+            console.log('Mensagem de teste respondida com sucesso!');
+        } catch (error) {
+            console.error('Erro ao responder mensagem:', error);
+        }
     }
 });
 
