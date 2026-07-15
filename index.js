@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
         res.send(`
             <html>
                 <body style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; background-color: #f0f2f5;">
-                    <h2>Aguardando o WhatsApp carregar ou já conectado! Olhe os logs na Render.</h2>
+                    <h2>WhatsApp Conectado ou Autenticando! Acompanhe o progresso nos logs da Render.</h2>
                 </body>
             </html>
         `);
@@ -33,10 +33,11 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor web rodando na porta ${PORT}`);
+    console.log(`[SERVIDOR WEB] Ativo na porta ${PORT}`);
 });
 
-// Inicialização super otimizada para servidores de baixa memória (512MB)
+console.log('[BOT] Iniciando o motor do Puppeteer...');
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -44,38 +45,53 @@ const client = new Client({
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage', // Evita usar a memória compartilhada /dev/shm
-            '--disable-gpu',           // Desativa aceleração de hardware por GPU
-            '--no-zygote',             // Desativa o processo Zygote para economizar RAM
-            '--single-process',        // Força a rodar tudo em apenas uma thread/processo (ajuda muito a poupar RAM)
-            '--no-first-run',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-zygote',
+            '--single-process',
             '--disable-extensions'
         ],
         cacheDirectory: path.join(__dirname, '.cache', 'puppeteer')
     }
 });
 
+// Evento 1: Gerando o QR Code
 client.on('qr', async (qr) => {
     try {
         qrCodeImageUrl = await QRCode.toDataURL(qr);
-        console.log('--- NOVO QR CODE GERADO! Acesse o link da sua aplicação para escanear ---');
+        console.log('[STATUS] Novo QR Code disponível para leitura no navegador.');
     } catch (err) {
-        console.error('Erro ao gerar imagem do QR Code:', err);
+        console.error('[ERRO] Falha ao gerar imagem do QR Code:', err);
     }
 });
 
-client.on('ready', () => {
-    console.log('TUDO PRONTO! O seu WhatsApp está conectado à VPS.');
-    qrCodeImageUrl = ''; 
+// Evento 2: O celular escaneou com sucesso e está autenticando a sessão
+client.on('authenticated', () => {
+    console.log('[LOG] QR CODE DETECTADO! Conexão autenticada pelo celular. Sincronizando dados...');
+    qrCodeImageUrl = ''; // Limpa a imagem para atualizar a interface web
 });
 
+// Evento 3: Se a autenticação falhar
+client.on('auth_failure', (msg) => {
+    console.error('[ERRO] Falha na autenticação do WhatsApp:', msg);
+});
+
+// Evento 4: Tudo pronto para enviar e receber mensagens
+client.on('ready', () => {
+    console.log('[STATUS] TUDO PRONTO! Conexão estabelecida com sucesso. Bot ativo e ouvindo mensagens.');
+});
+
+// Evento 5: Monitorando o recebimento de mensagens
 client.on('message', async msg => {
+    console.log(`[MENSAGEM RECEBIDA] De: ${msg.from} | Conteúdo: "${msg.body}"`);
+    
     if (msg.body.toLowerCase() === 'oi') {
         try {
+            console.log(`[BOT] Tentando responder para ${msg.from}...`);
             await msg.reply('Olá! Esse é um teste enviado automaticamente pela minha VPS gratuita na Render. 🚀');
-            console.log('Mensagem de teste respondida com sucesso!');
+            console.log(`[BOT] Resposta enviada com sucesso para ${msg.from}!`);
         } catch (error) {
-            console.error('Erro ao responder mensagem:', error);
+            console.error('[ERRO] Falha ao enviar resposta:', error);
         }
     }
 });
