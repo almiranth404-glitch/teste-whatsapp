@@ -1,13 +1,15 @@
 {
-  "name": "teste-whatsapp-vps",
+  "name": "teste-whatsapp",
   "version": "1.0.0",
-  "description": "Teste de bot de WhatsApp gratuito na Render",
+  "description": "Bot de WhatsApp na Render",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
+    "express": "^4.19.2",
+    "qrcode": "^1.5.3",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.26.0"
+    "whatsapp-web.js": "^1.23.0"
   }
 }
