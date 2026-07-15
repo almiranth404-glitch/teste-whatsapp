@@ -1,11 +1,20 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const path = require('path');
 
-// Inicializa o cliente do WhatsApp
+// Inicializa o cliente do WhatsApp configurando o caminho correto do Chrome na Render
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'] // Necessário para rodar em servidores Linux como a Render
+        headless: true,
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
+        ],
+        // Aponta para a pasta onde o Chrome foi baixado na Render usando a variável de ambiente
+        cacheDirectory: path.join(__dirname, '.cache', 'puppeteer')
     }
 });
 
